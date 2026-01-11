@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Electricity Bill & Rental Management</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+      overflow: auto;
+    }
+
+    /* Moving background text */
+    .bg-text {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .bg-text span {
+      position: absolute;
+      font-size: 32px;
+      color: rgba(0, 0, 139, 0.15);
+      font-weight: bold;
+      white-space: nowrap;
+      animation: moveXY 20s linear infinite;
+    }
+
+    @keyframes moveXY {
+      0% { transform: translate(-20%, -20%); }
+      50% { transform: translate(60vw, 60vh); }
+      100% { transform: translate(-20%, -20%); }
+    }
+
+    h1 { text-align: center; }
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .form-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 14px;
+    }
+    button {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:hover { background: #1e40af; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    th { background: #f1f5f9; }
+    .paid { color: green; font-weight: bold; }
+    .unpaid { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="bg-text">
+    <span>PANKAJ MAURAY 9532354278</span>
+  </div>
+
+  <div class="container">
+    <h1>Monthly Electricity Bill & Rental Management</h1>
+    <div style="text-align:center; margin-bottom:15px;">
+      <button onclick="printBill()">🖨️ Print</button>
+      <button onclick="shareWhatsApp()" style="background:#16a34a; margin-left:10px;">📤 Share WhatsApp</button>
+    </div>
+
+    <h3>Add Monthly Bill</h3>
+    <div class="form-group">
+      <input type="month" id="month" />
+      <input type="text" id="name" placeholder="Tenant Name" />
+      <input type="text" id="room" placeholder="Room Number" />
+      <input type="number" id="prevReading" placeholder="Previous Reading" />
+      <input type="number" id="currReading" placeholder="Current Reading" />
+      <input type="number" id="rate" placeholder="Rate per Unit" />
+      <button onclick="addRecord()">Add Bill</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Sr</th>
+          <th>Month</th>
+          <th>Name</th>
+          <th>Room</th>
+          <th>Units</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+<script>
+  let records = JSON.parse(localStorage.getItem('records')) || [];
+
+  function addRecord() {
+    const month = document.getElementById('month').value;
+    const name = document.getElementById('name').value;
+    const room = document.getElementById('room').value;
+    const prev = Number(document.getElementById('prevReading').value);
+    const curr = Number(document.getElementById('currReading').value);
+    const rate = Number(document.getElementById('rate').value);
+
+    if (!month || !name || !room || curr < prev || isNaN(rate)) {
+      alert('Enter valid monthly details');
+      return;
+    }
+
+    const units = curr - prev;
+    const amount = units * rate;
+
+    records.push({ month, name, room, units, amount, paid: false });
+    saveAndRender();
+
+    document.querySelectorAll('.form-group input').forEach(i => i.value = '');
+  }
+
+  function togglePayment(i) {
+    records[i].paid = !records[i].paid;
+    saveAndRender();
+  }
+
+  function saveAndRender() {
+    localStorage.setItem('records', JSON.stringify(records));
+    renderTable();
+    checkNotification();
+  }
+
+  function renderTable() {
+    const tableBody = document.getElementById('tableBody');
+    tableBody.innerHTML = '';
+    records.forEach((r, i) => {
+      tableBody.innerHTML += `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${r.month}</td>
+          <td>${r.name}</td>
+          <td>${r.room}</td>
+          <td>${r.units}</td>
+          <td>₹${r.amount.toFixed(2)}</td>
+          <td class="${r.paid ? 'paid' : 'unpaid'}">${r.paid ? 'Paid' : 'Unpaid'}</td>
+          <td><button onclick="togglePayment(${i})">Mark ${r.paid ? 'Unpaid' : 'Paid'}</button></td>
+        </tr>`;
+    });
+  }
+
+  function checkNotification() {
+    const currentMonth = new Date().toISOString().slice(0,7);
+    const lastNotified = localStorage.getItem('lastNotifiedMonth');
+    const unpaid = records.filter(r => r.month === currentMonth && !r.paid);
+
+    if (unpaid.length > 0 && lastNotified !== currentMonth) {
+      alert(⚠️ Reminder: ${unpaid.length} unpaid electricity bills for ${currentMonth});
+      localStorage.setItem('lastNotifiedMonth', currentMonth);
+    }
+  }
+
+  function printBill() {
+    window.print();
+  }
+
+  function shareWhatsApp() {
+    const phone = '919532354278';
+    const currentMonth = new Date().toISOString().slice(0,7);
+
+    const monthRecords = records.filter(r => r.month === currentMonth);
+    if (monthRecords.length === 0) {
+      alert('No records for current month');
+      return;
+    }
+
+    let message = 🧾 Electricity Bill – ${currentMonth}%0A%0A;
+    monthRecords.forEach((r, i) => {
+      message += ${i+1}. ${r.name} (Room ${r.room})%0AUnits: ${r.units}%0AAmount: ₹${r.amount}%0AStatus: ${r.paid ? 'Paid' : 'Unpaid'}%0A%0A;
+    });
+    message += '— Pankaj Mauray';
+
+    window.open(https://wa.me/${phone}?text=${message}, '_blank');
+  }
+
+  renderTable();
+  checkNotification();
+</script>
+</body>
+</html>
